@@ -1,0 +1,5 @@
+patchright
+pyyaml
+camoufox
+flask
+waitress

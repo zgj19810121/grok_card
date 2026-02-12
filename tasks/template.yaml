@@ -1,0 +1,192 @@
+# ============================================================
+# 任务配置模板 / Task Configuration Template
+# 复制此文件到 tasks/ 目录下，修改后使用
+# Copy this file to tasks/ directory and modify as needed
+# ============================================================
+
+name: 任务名称 / Task Name
+url: https://example.com
+
+# 浏览器配置 / Browser Settings
+browser:
+  headless: false             # 无头模式 / headless mode
+  engine: camoufox            # camoufox（反检测）或 patchright（默认）
+  channel: "msedge"           # 浏览器通道：msedge, chrome, 或留空用默认
+  incognito: true             # 无痕模式 / incognito mode
+  # user_data_dir: "./data"   # 持久化目录，保留登录状态 / persistent profile
+  # slow_mo: 500              # 全局慢动作（毫秒）/ global slow motion (ms)
+
+# 时间配置 / Timing Settings
+timing:
+  step_delay: [1000, 3000]    # 每步随机延迟（毫秒）/ random delay between steps (ms)
+  human_mouse: true           # 模拟人类鼠标轨迹 / simulate human mouse movement
+
+# 变量定义，在 steps 中用 {{变量名}} 引用 / Variables, use {{name}} in steps
+vars:
+  用户名: "test_user"
+  密码: "test_pass"
+
+# 操作步骤 / Steps
+steps:
+
+  # ---- 页面导航 / Navigation ----
+
+  # 跳转页面 / Navigate to URL
+  # - action: goto
+  #   url: "https://example.com/login"
+  #   timeout: 60000
+
+  # 等待 URL 包含关键字 / Wait for URL pattern
+  # - action: wait_url
+  #   pattern: "dashboard"
+  #   timeout: 60000
+
+  # 后退/前进/刷新 / Back/Forward/Reload
+  # - action: back
+  # - action: forward
+  # - action: reload
+
+  # ---- 等待 / Wait ----
+
+  # 等待元素出现 / Wait for element
+  # - action: wait
+  #   selector: '#login-form'
+  #   timeout: 60000
+
+  # 固定等待（毫秒）/ Fixed sleep (ms)
+  # - action: sleep
+  #   duration: 3000
+
+  # 随机等待 / Random sleep
+  # - action: sleep
+  #   duration: [2000, 5000]
+
+  # ---- 点击 / Click ----
+
+  # 普通点击 / Normal click
+  # - action: click
+  #   selector: 'button:has-text("Submit")'
+  #   timeout: 15000
+
+  # 中英双语兼容 / Bilingual selector
+  # - action: click
+  #   selector: 'button:has-text("Login"), button:has-text("登录")'
+
+  # 强制点击（跳过可见性检查）/ Force click
+  # - action: click
+  #   selector: '#hidden-btn'
+  #   force: true
+
+  # iframe 内点击 / Click inside iframe
+  # - action: click
+  #   selector: 'input[type="checkbox"]'
+  #   frame: 'iframe[src*="example.com"]'
+
+  # 动态坐标点击（用于 closed shadow-root）/ Click by coordinates
+  # - action: click_pos
+  #   js: >
+  #     (() => {
+  #       const el = document.querySelector('#reference');
+  #       const rect = el.getBoundingClientRect();
+  #       return {x: rect.x + 20, y: rect.y + 10};
+  #     })()
+
+  # ---- 输入 / Input ----
+
+  # 逐字输入（模拟真人打字）/ Type with human-like delay
+  # - action: type
+  #   selector: '[name="email"]'
+  #   value: "{{用户名}}"
+  #   type_delay: [100, 300]
+
+  # 直接填充（瞬间填入）/ Instant fill
+  # - action: fill
+  #   selector: '#search'
+  #   value: "search text"
+
+  # 按键 / Press key
+  # - action: press
+  #   selector: '#input'
+  #   key: "Enter"
+
+  # ---- 表单 / Form ----
+
+  # 勾选复选框 / Check checkbox
+  # - action: check
+  #   selector: '#agree'
+
+  # 取消勾选 / Uncheck
+  # - action: uncheck
+  #   selector: '#newsletter'
+
+  # 下拉选择 / Select option
+  # - action: select
+  #   selector: '#country'
+  #   value: "CN"
+
+  # 上传文件 / Upload file
+  # - action: upload
+  #   selector: '#file-input'
+  #   files: "path/to/file.png"
+
+  # ---- 鼠标 / Mouse ----
+
+  # 悬停 / Hover
+  # - action: hover
+  #   selector: '#menu'
+
+  # 鼠标移动到坐标 / Move mouse to position
+  # - action: mouse_move
+  #   x: 500
+  #   y: 300
+
+  # ---- 其他 / Others ----
+
+  # 聚焦元素 / Focus element
+  # - action: focus
+  #   selector: '#input'
+
+  # 滚动到元素 / Scroll to element
+  # - action: scroll
+  #   selector: '#footer'
+
+  # 滚动指定距离 / Scroll by pixels
+  # - action: scroll
+  #   y: 500
+
+  # 截图 / Screenshot
+  # - action: screenshot
+  #   path: "result.png"
+
+  # 执行 JS / Execute JavaScript
+  # - action: js
+  #   script: "document.title"
+
+  # ---- 流程控制 / Flow Control ----
+
+  # 循环 / Loop
+  # - action: loop
+  #   count: 3
+  #   steps:
+  #     - action: click
+  #       selector: '#next'
+
+  # 条件重试（等待条件满足）/ Retry until condition met
+  # - action: retry_until
+  #   selector: '#success'              # CSS 选择器条件
+  #   # js_condition: "expr"            # 或用 JS 表达式条件
+  #   max_retries: 5
+  #   retry_delay: [3000, 5000]
+  #   steps:                            # 每次重试执行的操作
+  #     - action: click
+  #       selector: '#retry-btn'
+  #   on_success:                       # 条件满足后执行
+  #     - action: click
+  #       selector: '#continue'
+
+  # 条件判断（元素存在则执行）/ If element exists
+  # - action: if_exists
+  #   selector: '#popup'
+  #   steps:
+  #     - action: click
+  #       selector: '#close-popup'

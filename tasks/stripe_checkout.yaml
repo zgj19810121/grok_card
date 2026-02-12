@@ -1,0 +1,281 @@
+# ============================================================
+# Grok 登录 + Stripe 支付流程
+# Grok Registration + Stripe Checkout Flow
+# ============================================================
+
+name: Grok 登录流程
+url: https://x.ai
+
+browser:
+  headless: false
+  engine: camoufox          # 反检测浏览器 / anti-detect browser
+  channel: "msedge"
+  incognito: true
+
+timing:
+  step_delay: [500, 1000]  # 每步随机延迟 1~3 秒 / random delay between steps
+  human_mouse: true         # 模拟人类鼠标轨迹 / simulate human mouse movement
+
+vars:
+  邮箱: "ericroberts@claim.nba00.com"
+  密码: "vczgvu2tvjzbt78"
+  card: "5236860176948307"
+  expiry: "02 32"
+  cvc: "415"
+  name: "Barbara Wilson"
+  zip: "86047"
+  phone: "2125551234"
+
+steps:
+  # ==================== 第一阶段：导航到 Grok / Navigate to Grok ====================
+
+  # 点击 Try Grok 按钮 / Click Try Grok button
+  - action: click
+    selector: 'a:has-text("Try Grok")'
+    timeout: 60000
+
+  # 等待跳转到 grok.com / Wait for redirect to grok.com
+  - action: wait_url
+    pattern: "grok.com"
+    timeout: 60000
+
+  # 等待页面就绪，如果遇到 CF challenge 就点击验证 / Wait for CF verify
+  - action: retry_until
+    selector: 'a[href="/sign-in"]'
+    max_retries: 20
+    retry_delay: [3000, 4000]
+    steps:
+      - action: click_pos
+        js: >
+          (() => {
+            const text = document.body?.innerText || '';
+            if (text.indexOf('Verifying') !== -1) return null;
+            const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+            while (walker.nextNode()) {
+              const node = walker.currentNode;
+              if (node.textContent.indexOf('Verify you are human') !== -1) {
+                const el = node.parentElement;
+                const rect = el.getBoundingClientRect();
+                return {x: rect.x + 60 + Math.random() * 20, y: rect.bottom + 50 + Math.random() * 15};
+              }
+            }
+            return null;
+          })()
+
+  # ==================== 第二阶段：登录 / Login ====================
+
+  # 点击登录 / Click Sign in
+  - action: click
+    selector: 'a[href="/sign-in"]'
+    timeout: 15000
+
+  # 等待跳转到登录页 / Wait for login page
+  - action: wait_url
+    pattern: "sign-in"
+    timeout: 60000
+
+  # 点击邮箱登录 / Click Login with email
+  - action: click
+    selector: 'button:has-text("Login with email")'
+    timeout: 15000
+
+  # 等待邮箱输入框 / Wait for email input
+  - action: wait
+    selector: '[name="email"]'
+    timeout: 60000
+
+  # 输入邮箱 / Type email
+  - action: fill
+    selector: '[name="email"]'
+    value: "{{邮箱}}"
+    
+  # 点击下一步 / Click Next
+  - action: click
+    selector: 'button:has-text("Next")'
+
+  # 等待密码输入框 / Wait for password input
+  - action: wait
+    selector: '[name="password"]'
+    timeout: 60000
+
+  # 输入密码 / Type password
+  - action: fill
+    selector: '[name="password"]'
+    value: "{{密码}}"
+    
+  # ==================== 第三阶段：人机验证 / CAPTCHA Verification ====================
+
+  # 动态坐标点击 CF 复选框 + 轮询 token / Click CF checkbox by coords + poll token
+  # CF 组件在 closed shadow-root 内，无法用选择器访问，只能通过坐标点击
+  # CF widget is inside closed shadow-root, can only click by coordinates
+  - action: retry_until
+    js_condition: "(document.querySelector('input[name=\"cf-turnstile-response\"]')?.value?.length || 0) > 0"
+    max_retries: 10
+    retry_delay: [3000, 5000]
+    steps:
+      - action: click_pos
+        js: >
+          (() => {
+            const text = document.body?.innerText || '';
+            if (text.indexOf('Verifying') !== -1) return null;
+            const pwd = document.querySelector('[name="password"]');
+            const login = Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === 'Login');
+            if (!pwd || !login) return null;
+            const pwdRect = pwd.getBoundingClientRect();
+            const loginRect = login.getBoundingClientRect();
+            const cx = pwdRect.x + 50 + Math.random() * 30;
+            const cy = (pwdRect.bottom + loginRect.top) / 2 + 10 + Math.random() * 10;
+            return {x: Math.round(cx), y: Math.round(cy)};
+          })()
+    on_success:
+      - action: click
+        selector: 'button:has-text("Login")'
+        timeout: 10000
+
+  # ==================== 第四阶段：升级订阅 / Upgrade Subscription ====================
+
+  # 等待登录完成，跳转回 grok.com / Wait for redirect back to grok.com
+  - action: wait_url
+    pattern: "grok.com"
+    timeout: 60000
+
+  # 等待升级按钮出现 / Wait for Upgrade button
+  - action: wait
+    selector: 'button:has-text("Upgrade"), button:has-text("升级")'
+    timeout: 60000
+
+  # 点击升级 / Click Upgrade
+  - action: click
+    selector: 'button:has-text("Upgrade"), button:has-text("升级")'
+    timeout: 15000
+
+  # 等待免费试用按钮出现 / Wait for free trial button
+  - action: wait
+    selector: 'button:has-text("Start free trial"), button:has-text("开始"), button:has-text("free trial")'
+    timeout: 60000
+
+  # 点击开始免费试用 / Click Start free trial
+  - action: click
+    selector: 'button:has-text("Start free trial"), button:has-text("开始"), button:has-text("free trial")'
+    timeout: 15000
+
+  # ==================== 第五阶段：Stripe 支付 / Stripe Payment ====================
+
+  # 等待支付页面加载 / Wait for payment page
+  - action: wait
+    selector: '[data-testid="card-accordion-item"]'
+    timeout: 60000
+
+  # 选择银行卡支付 / Select card payment
+  - action: click
+    selector: '[data-testid="card-accordion-item"]'
+
+  # 等待卡号输入框出现 / Wait for card number input
+  - action: wait
+    selector: '#cardNumber'
+    timeout: 30000
+
+  # 填写卡号 / Enter card number
+  - action: fill
+    selector: "#cardNumber"
+    value: "{{card}}"
+
+  # 填写有效期 / Enter expiry date
+  - action: type
+    selector: "#cardExpiry"
+    value: "{{expiry}}"
+    type_delay: [500, 1000]
+
+  # 填写安全码 / Enter CVC
+  - action: type
+    selector: "#cardCvc"
+    value: "{{cvc}}"
+    type_delay: [400, 800]
+
+  # 填写持卡人姓名 / Enter cardholder name
+  - action: type
+    selector: "#billingName"
+    value: "{{name}}"
+    type_delay: [300, 600]
+
+  # 填写邮编 / Enter postal code
+  - action: type
+    selector: "#billingPostalCode"
+    value: "{{zip}}"
+    type_delay: [250, 500]
+
+  - action: sleep
+    duration: [200, 500]
+
+
+
+  # 向下滚动直到找到试用按钮 / Scroll down until trial button visible
+  - action: retry_until
+    js_condition: >
+      (() => {
+        const btn = document.querySelector('[data-testid="hosted-payment-submit-button"]');
+        if (!btn) return false;
+        const rect = btn.getBoundingClientRect();
+        return rect.top >= 0 && rect.bottom <= window.innerHeight;
+      })()
+    max_retries: 15
+    retry_delay: [200, 400]
+    steps:
+      - action: js
+        script: "window.scrollBy(0, 300 + Math.random() * 200)"
+
+  #勾选保存信息 / Check save info
+  - action: check
+    selector: "#enableStripePass"
+
+  - action: sleep
+    duration: [200, 500]
+
+  #填写手机号 / Enter phone number
+  - action: type
+    selector: '#phoneNumber'
+    value: "{{phone}}"
+    type_delay: [80, 150]
+
+  # 点击开始试用 / Start trial
+  - action: click
+    selector: 'button:has-text("Start trial"), button:has-text("开始试用")'
+
+  # ==================== 第六阶段：hCaptcha 验证 / hCaptcha Verification ====================
+
+  # 等待 hCaptcha 出现 / Wait for hCaptcha iframe
+  - action: wait
+    selector: 'iframe[src*="hcaptcha"]:not([name="hcaptcha-invisible"])'
+    timeout: 30000
+
+  # 获取 hCaptcha iframe 位置信息 / Get hCaptcha iframe position
+  - action: js
+    script: >
+      (() => {
+        const iframe = document.querySelector('iframe[src*="hcaptcha"]:not([name="hcaptcha-invisible"])');
+        if (!iframe) return 'iframe not found';
+        const rect = iframe.getBoundingClientRect();
+        return {x: rect.x, y: rect.y, w: rect.width, h: rect.height, visible: rect.width > 0};
+      })()
+
+  # 点击 hCaptcha 复选框 / Click hCaptcha checkbox
+  - action: click_pos
+    js: >
+      (() => {
+        const iframe = document.querySelector('iframe[src*="hcaptcha"]:not([name="hcaptcha-invisible"])');
+        if (!iframe) return null;
+        const rect = iframe.getBoundingClientRect();
+        if (rect.width === 0) return null;
+        return {x: rect.x + rect.width * 0.53 + Math.random() * 10, y: rect.y + rect.height * 0.50 + Math.random() * 6 - 3};
+      })()
+
+
+
+
+  - action: sleep
+    duration: 60000
+
+
+  # 完成截图 / Final screenshot
+  - action: screenshot
+    path: "stripe_filled.png"
